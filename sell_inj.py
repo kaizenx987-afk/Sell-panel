@@ -26,8 +26,9 @@ SCRIPT_URL = "https://server-jts6.onrender.com"
     INPUT_REVOKE_KEY, INPUT_RESET_KEY,
     INPUT_CUSTOM_NAME, INPUT_CUSTOM_DURATION, INPUT_CUSTOM_MAX,
     INPUT_DELETE_KEY,
-    INPUT_UNREVOKE_KEY  # <--- Idagdag ito
-) = range(9)            # <--- Gawing 9
+    INPUT_UNREVOKE_KEY,
+    INPUT_SETMSG_KEY, INPUT_SETMSG_TEXT
+) = range(11)
 
 # ======================
 # KEEP ALIVE SERVER
@@ -95,7 +96,8 @@ Please select an option from the menu Kaze:"""
          InlineKeyboardButton("📊 Stats", callback_data="act_stats")],
         [InlineKeyboardButton("⚡ List Keys", callback_data="act_listact"), 
          InlineKeyboardButton("🔴 Revoked History", callback_data="act_listhist")],
-        [InlineKeyboardButton("🔥 Custom Key", callback_data="act_custom")]
+        [InlineKeyboardButton("🔥 Custom Key", callback_data="act_custom"),
+         InlineKeyboardButton("💬 Custom Message", callback_data="act_setmsg")]
     ]
     
     update.message.reply_text(text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="Markdown")
@@ -261,6 +263,11 @@ def handle_db(update: Update, context: CallbackContext):
         except Exception as e:
             context.bot.send_message(chat_id=query.message.chat_id, text=f"❌ Error Generating Key: {e}")
         return ConversationHandler.END
+        
+# ---- NEW FLOW: SET CUSTOM MESSAGE ----
+    elif action == "setmsg":
+        context.bot.send_message(chat_id=query.message.chat_id, text=f"💬 **Database:** {db_name}\n\n➡️ **Enter the KEY you want to modify:**", reply_markup=ForceReply(selective=True), parse_mode="Markdown")
+        return INPUT_SETMSG_KEY
 
 # ======================
 # EXECUTE FUNCTIONS
@@ -364,6 +371,28 @@ def execute_custom_max(update: Update, context: CallbackContext):
         update.message.reply_text(f"❌ Error: {e}")
     return ConversationHandler.END
 
+def execute_setmsg_key(update: Update, context: CallbackContext):
+    context.user_data["msg_key"] = update.message.text.strip()
+    update.message.reply_text("➡️ **Enter the Custom Pop-up Message for this key:**\n*(Halimbawa: Banned ka na dahil sa pag-cheater!)*", reply_markup=ForceReply(selective=True), parse_mode="Markdown")
+    return INPUT_SETMSG_TEXT
+
+def execute_setmsg_text(update: Update, context: CallbackContext):
+    custom_msg = update.message.text.strip()
+    key = context.user_data.get("msg_key")
+    panel_url = context.user_data.get("panel_url")
+    db_choice = context.user_data.get("db")
+    db_name = "CODM INJECTOR" if db_choice == "injector" else "CODM SCRIPT"
+
+    try:
+        r = requests.get(f"{panel_url}/setmessage?key={key}&msg={requests.utils.quote(custom_msg)}", timeout=15)
+        if r.status_code == 200:
+            update.message.reply_text(f"✅ **CUSTOM MESSAGE UPDATED!**\n\n**Database:** {db_name}\n**Key:** `{key}`\n**Message:** `{custom_msg}`", parse_mode="Markdown")
+        else:
+            update.message.reply_text(f"❌ Failed to update message. Key `{key}` might not exist on {db_name}.", parse_mode="Markdown")
+    except Exception as e:
+        update.message.reply_text(f"❌ Error: {e}")
+    return ConversationHandler.END
+
 def cancel(update: Update, context: CallbackContext):
     update.message.reply_text("❌ Process cancelled.")
     return ConversationHandler.END
@@ -402,6 +431,8 @@ def main():
             INPUT_CUSTOM_NAME: [MessageHandler(Filters.text & ~Filters.command, execute_custom_name)],
             INPUT_CUSTOM_DURATION: [MessageHandler(Filters.text & ~Filters.command, execute_custom_duration)],
             INPUT_CUSTOM_MAX: [MessageHandler(Filters.text & ~Filters.command, execute_custom_max)],
+            INPUT_SETMSG_KEY: [MessageHandler(Filters.text & ~Filters.command, execute_setmsg_key)],
+            INPUT_SETMSG_TEXT: [MessageHandler(Filters.text & ~Filters.command, execute_setmsg_text)],
         },
         fallbacks=[CommandHandler("cancel", cancel)]
     )
