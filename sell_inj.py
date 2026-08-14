@@ -15,8 +15,8 @@ from telegram.ext import (
 BOT_TOKEN = os.environ.get("BOT_TOKEN")
 OWNER_ID = int(os.environ.get("OWNER_ID"))
 
-INJECTOR_URL = "https://server-vu9x.onrender.com"
-SCRIPT_URL = "https://server-vu9x.onrender.com"  
+INJECTOR_URL = "https://server-jts6.onrender.com"
+SCRIPT_URL = "https://server-jts6.onrender.com"  
 
 # ======================
 # STATES FOR CONVERSATION
